@@ -1,7 +1,7 @@
 name: Python CI 2
 
 on:
-  # 每天1点1分触发（UTC时间）
+  # 每天1点0分触发（UTC时间）
   schedule:
     - cron: '0 1 * * *'
 
@@ -26,10 +26,10 @@ jobs:
       # 可以继续扩展更多用户和密码
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4  # 升级至v4以支持更好的持久化凭证
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: '3.9'
 
@@ -38,5 +38,26 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt  # 假设你的项目有 requirements.txt
 
-      - name: Run Python script
-        run: python 69yun.py  # 执行你的 Python 脚本
+      - name: Run Python script with random delay
+        run: |
+          # 生成 20 到 100 之间的随机数并进行等待
+          DELAY=$(( RANDOM % 81 + 20 ))
+          echo "为了防止被检测，随机延迟 $DELAY 秒后执行脚本..."
+          sleep $DELAY
+          
+          # 执行你的签到脚本，并将标准输出和错误都追加记录到日志文件中
+          python 69yun.py >> checkin_log.txt 2>&1
+
+      - name: Commit and Push Log
+        run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Actions"
+          
+          # 将日志文件添加到暂存区
+          git add checkin_log.txt
+          
+          # 提交日志，带有 [skip ci] 防止重新触发 push 工作流导致死循环
+          # 如果日志没有变化，|| exit 0 可以防止步骤报错挂掉
+          git commit -m "chore: update check-in log [skip ci]" || exit 0
+          
+          git push
